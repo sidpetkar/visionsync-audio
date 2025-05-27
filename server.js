@@ -1,13 +1,16 @@
 import express from "express";
-import fs from "fs";
-import { createServer as createViteServer } from "vite";
+import path from "path";
+import { fileURLToPath } from "url";
 import "dotenv/config";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.OPENAI_API_KEY;
 
-// API route for token generation (MUST be before Vite middleware)
+// API route for token generation (MUST be before static middleware)
 app.get("/token", async (req, res) => {
   try {
     const response = await fetch(
@@ -33,18 +36,21 @@ app.get("/token", async (req, res) => {
   }
 });
 
-// Configure Vite middleware for React client
-const vite = await createViteServer({
-  server: { middlewareMode: true },
-  appType: "spa", // Single Page Application mode
-});
-app.use(vite.middlewares);
+// Serve static files from dist directory in production, client directory in development
+const staticDir = process.env.NODE_ENV === 'production' ? 'dist' : 'client';
+app.use(express.static(path.join(__dirname, staticDir)));
 
-// Serve static files and SPA fallback (MUST be last)
+// SPA fallback - serve index.html for all other routes
 app.get("*", (req, res) => {
-  res.sendFile("index.html", { root: "./client" });
+  res.sendFile(path.join(__dirname, staticDir, "index.html"));
 });
 
-app.listen(port, () => {
-  console.log(`Express server running on *:${port}`);
-}); 
+// Start server if not in Vercel environment
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Express server running on *:${port}`);
+  });
+}
+
+// Export for Vercel
+export default app; 
