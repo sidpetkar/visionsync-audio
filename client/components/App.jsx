@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import logo from "/assets/openai-logomark.svg";
-import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
-import ToolPanel from "./ToolPanel";
+import LottieAnimation from "./LottieAnimation";
+import gradientAnimation from "../assets/lottie-gradient.json";
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -12,6 +11,7 @@ export default function App() {
   const audioElement = useRef(null);
 
   async function startSession() {
+    try {
     // Get a session token for OpenAI Realtime API
     const tokenResponse = await fetch("/token");
     const data = await tokenResponse.json();
@@ -40,7 +40,7 @@ export default function App() {
     await pc.setLocalDescription(offer);
 
     const baseUrl = "https://api.openai.com/v1/realtime";
-    const model = "gpt-4o-realtime-preview-2024-12-17";
+    const model = "gpt-4o-mini-realtime-preview-2024-12-17";
     const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
       method: "POST",
       body: offer.sdp,
@@ -57,22 +57,29 @@ export default function App() {
     await pc.setRemoteDescription(answer);
 
     peerConnection.current = pc;
+    } catch (error) {
+      console.error("Session start error:", error);
+      setIsSessionActive(false);
+    }
   }
 
   // Stop current session, clean up peer connection and data channel
   function stopSession() {
+    try {
     if (dataChannel) {
       dataChannel.close();
     }
 
+      if (peerConnection.current) {
     peerConnection.current.getSenders().forEach((sender) => {
       if (sender.track) {
         sender.track.stop();
       }
     });
-
-    if (peerConnection.current) {
       peerConnection.current.close();
+      }
+    } catch (error) {
+      console.error("Session stop error:", error);
     }
 
     setIsSessionActive(false);
@@ -144,38 +151,31 @@ export default function App() {
   }, [dataChannel]);
 
   return (
-    <>
-      <nav className="absolute top-0 left-0 right-0 h-16 flex items-center">
-        <div className="flex items-center gap-4 w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
-          <img style={{ width: "24px" }} src={logo} />
-          <h1>realtime console</h1>
-        </div>
-      </nav>
-      <main className="absolute top-16 left-0 right-0 bottom-0">
-        <section className="absolute top-0 left-0 right-[380px] bottom-0 flex">
-          <section className="absolute top-0 left-0 right-0 bottom-32 px-4 overflow-y-auto">
-            <EventLog events={events} />
-          </section>
-          <section className="absolute h-32 left-0 right-0 bottom-0 p-4">
-            <SessionControls
-              startSession={startSession}
-              stopSession={stopSession}
-              sendClientEvent={sendClientEvent}
-              sendTextMessage={sendTextMessage}
-              events={events}
-              isSessionActive={isSessionActive}
-            />
-          </section>
-        </section>
-        <section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
-          <ToolPanel
-            sendClientEvent={sendClientEvent}
-            sendTextMessage={sendTextMessage}
-            events={events}
-            isSessionActive={isSessionActive}
-          />
-        </section>
-      </main>
-    </>
+    <div className="min-h-screen w-full bg-black relative">
+      {/* Main content */}
+      <SessionControls
+        startSession={startSession}
+        stopSession={stopSession}
+        sendClientEvent={sendClientEvent}
+        sendTextMessage={sendTextMessage}
+        events={events}
+        isSessionActive={isSessionActive}
+      />
+      
+      {/* Full-width Lottie animation at bottom */}
+      <div 
+        className="fixed bottom-0 left-0 h-32 z-0" 
+        style={{ 
+          width: '100vw',
+          margin: 0, 
+          padding: 0
+        }}
+      >
+        <LottieAnimation 
+          animationData={gradientAnimation}
+          className="w-full h-full"
+        />
+      </div>
+    </div>
   );
 }

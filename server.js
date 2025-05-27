@@ -7,14 +7,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.OPENAI_API_KEY;
 
-// Configure Vite middleware for React client
-const vite = await createViteServer({
-  server: { middlewareMode: true },
-  appType: "custom",
-});
-app.use(vite.middlewares);
-
-// API route for token generation
+// API route for token generation (MUST be before Vite middleware)
 app.get("/token", async (req, res) => {
   try {
     const response = await fetch(
@@ -26,7 +19,7 @@ app.get("/token", async (req, res) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-realtime-preview-2024-12-17",
+          model: "gpt-4o-mini-realtime-preview-2024-12-17",
           voice: "verse",
         }),
       },
@@ -40,25 +33,18 @@ app.get("/token", async (req, res) => {
   }
 });
 
-// Render the React client
-app.use("*", async (req, res, next) => {
-  const url = req.originalUrl;
+// Configure Vite middleware for React client
+const vite = await createViteServer({
+  server: { middlewareMode: true },
+  appType: "spa", // Single Page Application mode
+});
+app.use(vite.middlewares);
 
-  try {
-    const template = await vite.transformIndexHtml(
-      url,
-      fs.readFileSync("./client/index.html", "utf-8"),
-    );
-    const { render } = await vite.ssrLoadModule("./client/entry-server.jsx");
-    const appHtml = await render(url);
-    const html = template.replace(`<!--ssr-outlet-->`, appHtml?.html);
-    res.status(200).set({ "Content-Type": "text/html" }).end(html);
-  } catch (e) {
-    vite.ssrFixStacktrace(e);
-    next(e);
-  }
+// Serve static files and SPA fallback (MUST be last)
+app.get("*", (req, res) => {
+  res.sendFile("index.html", { root: "./client" });
 });
 
 app.listen(port, () => {
   console.log(`Express server running on *:${port}`);
-});
+}); 
