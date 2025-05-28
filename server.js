@@ -10,6 +10,13 @@ const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.OPENAI_API_KEY;
 
+// Debug logging
+console.log("Environment:", {
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL: process.env.VERCEL,
+  __dirname: __dirname
+});
+
 // API route for token generation (MUST be before static middleware)
 app.get("/token", async (req, res) => {
   try {
@@ -37,12 +44,17 @@ app.get("/token", async (req, res) => {
 });
 
 // Serve static files from dist directory in production, client directory in development
-const staticDir = process.env.NODE_ENV === 'production' ? 'dist' : 'client';
+const staticDir = process.env.VERCEL || process.env.NODE_ENV === 'production' ? 'dist' : 'client';
+console.log("Static directory:", staticDir);
+console.log("Full static path:", path.join(__dirname, staticDir));
+
 app.use(express.static(path.join(__dirname, staticDir)));
 
 // SPA fallback - serve index.html for all other routes
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, staticDir, "index.html"));
+  const indexPath = path.join(__dirname, staticDir, "index.html");
+  console.log("Serving index.html from:", indexPath);
+  res.sendFile(indexPath);
 });
 
 // Start server if not in Vercel environment
