@@ -10,10 +10,16 @@ const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.OPENAI_API_KEY;
 
+// Check if we're in development mode (via --dev flag or NODE_ENV)
+const isDev = process.argv.includes('--dev') || process.env.NODE_ENV === 'development';
+const isVercel = !!process.env.VERCEL;
+
 // Debug logging
 console.log("Environment:", {
   NODE_ENV: process.env.NODE_ENV,
   VERCEL: process.env.VERCEL,
+  isDev: isDev,
+  argv: process.argv,
   __dirname: __dirname
 });
 
@@ -43,8 +49,8 @@ app.get("/token", async (req, res) => {
   }
 });
 
-// Serve static files from dist directory in production, client directory in development
-const staticDir = process.env.VERCEL || process.env.NODE_ENV === 'production' ? 'dist' : 'client';
+// Serve static files from appropriate directory
+const staticDir = isDev ? 'client' : 'dist';
 console.log("Static directory:", staticDir);
 console.log("Full static path:", path.join(__dirname, staticDir));
 
@@ -58,9 +64,10 @@ app.get("*", (req, res) => {
 });
 
 // Start server if not in Vercel environment
-if (!process.env.VERCEL) {
+if (!isVercel) {
   app.listen(port, () => {
     console.log(`Express server running on *:${port}`);
+    console.log(`Mode: ${isDev ? 'Development' : 'Production'}`);
   });
 }
 
